@@ -9,11 +9,11 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 SUPABASE_TABLE_NAME = "scp"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-API_KEY = "af272f81d0526485fe9c97aecd4403cc4a676a63"
+API_KEY = "14bd223dc7bc2faa2099a6ea7a01e7e60c8aa99b"
 URL_API = "https://google.serper.dev/search"
 
-mulai = 2500
-endnya = 5000
+mulai = 5000
+endnya = 7500
 
 headers = {
     "X-API-KEY": API_KEY,
