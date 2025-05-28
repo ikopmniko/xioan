@@ -15,7 +15,7 @@ SCRAPER_API_KEY = "d6dc15f2ac972c5af6f6ff499594fa7e"
 SCRAPER_URL = "http://api.scraperapi.com"
 
 # Rentang baris yang ingin diproses
-mulai = 0
+mulai = 1
 endnya = 2500
 
 def search_url(idx, target_url):
