@@ -10,12 +10,12 @@ SUPABASE_TABLE_NAME = "scpok"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # API Serper
-API_KEY = "8feab4cdff333aa283b9244cebc34848bebdd65d"
+API_KEY = "391fd07056c9dcb1bb9a25f664658e6e39bc501c"
 URL_API = "https://google.serper.dev/search"
 
 # Rentang baris
-mulai = 5000
-endnya = 7500
+mulai = 7500
+endnya = 10000
 
 headers = {
     "X-API-KEY": API_KEY,
