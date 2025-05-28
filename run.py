@@ -35,10 +35,8 @@ def search_url(idx, target_url):
             title = top_result.get("title", "")
             link = top_result.get("link", "")
             snippet = top_result.get("snippet", "").strip()
-
             if not snippet:
                 snippet = "snipet nya kosong"
-
             print(f"[{idx}] ✔ {title} -> {link} | Snippet: {snippet}")
             return {"title": title, "url": link, "snippet": snippet}
         else:
@@ -57,10 +55,15 @@ def insert_to_supabase(data):
         return
     try:
         res = supabase.table(SUPABASE_TABLE_NAME).insert(data).execute()
-        if res.error:
+        # Debug print response
+        # print("Response dari Supabase:", res)
+        # Cek error secara fleksibel
+        if hasattr(res, 'error') and res.error is not None:
             print(f"⚠ Gagal insert ke Supabase: {res.error}")
+        elif isinstance(res, dict) and "error" in res and res["error"] is not None:
+            print(f"⚠ Gagal insert ke Supabase: {res['error']}")
         else:
-            print(f"✔ Data berhasil disimpan ke Supabase: {res.data}")
+            print(f"✔ Data berhasil disimpan ke Supabase: {getattr(res, 'data', res)}")
     except Exception as e:
         print(f"⚠ Error insert ke Supabase: {e}")
 
