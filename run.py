@@ -3,54 +3,44 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from supabase import create_client, Client
 
-# Konfigurasi Supabase
+# Ganti dengan info Supabase kamu
 SUPABASE_URL = "https://cqakrownxujefhtmsefa.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxYWtyb3dueHVqZWZodG1zZWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzIyNjMyMzMsImV4cCI6MjA0NzgzOTIzM30.E9jJxNBxFsVZsndwhsMZ_2hXaeHdDTLS7jZ50l-S72U"
-SUPABASE_TABLE_NAME = "scpok"
+SUPABASE_TABLE_NAME = "scp"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Konfigurasi Apify
-APIFY_API_TOKEN = "apify_api_KYYLgCawu5TDZgBEf9vRt82OvLZWnH4CL93x"  # Ganti dengan token Apify kamu
-APIFY_API_URL = f"https://api.apify.com/v2/actor-tasks/apify/google-search-scraper/run-sync-get-dataset-items?token={APIFY_API_TOKEN}"
+# API Serper
+API_KEY = "035ed9295504af2c1867ce8c7495638287656079"
+URL_API = "https://google.serper.dev/search"
 
-# Rentang baris yang ingin diproses
+# Rentang baris
 mulai = 1
 endnya = 2500
 
+headers = {
+    "X-API-KEY": API_KEY,
+    "Content-Type": "application/json"
+}
+
 def search_url(idx, target_url):
     query = f"site:{target_url}"
-    payload = {
-        "searchTerms": [query],
-        "resultsPerPage": 1,
-        "pageNumber": 1,
-        "language": "en",
-        "countryCode": "us"
-    }
-
-    headers = {
-        "Content-Type": "application/json"
-    }
+    payload = {"q": query}
 
     try:
-        response = requests.post(APIFY_API_URL, json=payload, headers=headers)
-        if response.status_code != 200:
-            print(f"[{idx}] ⚠ HTTP error {response.status_code}: {response.text}")
-            return None
+        response = requests.post(URL_API, headers=headers, json=payload)
+        data = response.json()
 
-        results = response.json()
-
-        if results and len(results) > 0:
-            top_result = results[0]
+        if "organic" in data and len(data["organic"]) > 0:
+            top_result = data["organic"][0]
             title = top_result.get("title", "")
-            link = top_result.get("url", "")
-            snippet = top_result.get("description", "tidak ada snippet")
+            link = top_result.get("link", "")
+            snippet = top_result.get("snippet", "").strip()
 
-            print(f"[{idx}] ✔ {title} -> {link}")
-            return {
-                "title": title,
-                "url": link,
-                "snippet": snippet
-            }
+            if not snippet:
+                snippet = "snipet nya kosong"
+
+            print(f"[{idx}] ✔ {title} -> {link} | Snippet: {snippet}")
+            return {"title": title, "url": link, "snippet": snippet}
         else:
             print(f"[{idx}] ❌ Tidak ditemukan: {target_url}")
             return None
