@@ -1,42 +1,55 @@
 import requests
 import time
 from concurrent.futures import ThreadPoolExecutor
-from queue import Queue, Empty
 from supabase import create_client, Client
+from bs4 import BeautifulSoup
 
+# Konfigurasi Supabase
 SUPABASE_URL = "https://cqakrownxujefhtmsefa.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxYWtyb3dueHVqZWZodG1zZWZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzIyNjMyMzMsImV4cCI6MjA0NzgzOTIzM30.E9jJxNBxFsVZsndwhsMZ_2hXaeHdDTLS7jZ50l-S72U"
-SUPABASE_TABLE_NAME = "scp"
+SUPABASE_TABLE_NAME = "scpok"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-API_KEY = "808eb0508409a0dab4eef7d6cf2f20153814dc67"
-URL_API = "https://google.serper.dev/search"
+# Konfigurasi ScraperAPI
+SCRAPER_API_KEY = "d6dc15f2ac972c5af6f6ff499594fa7e"
+SCRAPER_URL = "http://api.scraperapi.com"
 
-mulai = 10000
-endnya = 12500
-
-headers = {
-    "X-API-KEY": API_KEY,
-    "Content-Type": "application/json"
-}
+# Rentang baris yang ingin diproses
+mulai = 0
+endnya = 2500
 
 def search_url(idx, target_url):
-    query = f"site:{target_url}"
-    payload = {"q": query}
+    params = {
+        "api_key": SCRAPER_API_KEY,
+        "url": f"https://www.google.com/search?q=site:{target_url}"
+    }
 
     try:
-        response = requests.post(URL_API, headers=headers, json=payload)
-        data = response.json()
+        response = requests.get(SCRAPER_URL, params=params)
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        if "organic" in data and len(data["organic"]) > 0:
-            top_result = data["organic"][0]
-            title = top_result.get("title", "")
-            link = top_result.get("link", "")
-            print(f"[{idx}] ✔ {title} -> {link}")
-            return {"title": title, "url": link}
-        else:
-            print(f"[{idx}] ❌ Tidak ditemukan: {target_url}")
-            return None
+        # Ambil hasil pencarian pertama
+        result = soup.find("div", class_="tF2Cxc") or soup.find("div", class_="g")
+
+        if result:
+            title_tag = result.find("h3")
+            link_tag = result.find("a", href=True)
+
+            if title_tag and link_tag:
+                title = title_tag.text.strip()
+                link = link_tag["href"].strip()
+                snippet = result.find("span", class_="aCOpRe")
+                snippet_text = snippet.text.strip() if snippet else "tidak ada snippet"
+
+                print(f"[{idx}] ✔ {title} -> {link}")
+                return {
+                    "title": title,
+                    "url": link,
+                    "snippet": snippet_text
+                }
+
+        print(f"[{idx}] ❌ Tidak ditemukan: {target_url}")
+        return None
 
     except Exception as e:
         print(f"[{idx}] ⚠ Error: {e}")
@@ -50,17 +63,17 @@ def insert_to_supabase(data):
         return
     try:
         res = supabase.table(SUPABASE_TABLE_NAME).insert(data).execute()
-        if res.status_code != 201:
-            print(f"⚠ Gagal insert ke Supabase: {res}")
+        if res.error:
+            print(f"⚠ Gagal insert ke Supabase: {res.error}")
         else:
-            print("✔ Data berhasil disimpan ke Supabase")
+            print(f"✔ Data berhasil disimpan ke Supabase: {res.data}")
     except Exception as e:
         print(f"⚠ Error insert ke Supabase: {e}")
 
 def worker(idx, url):
-    res = search_url(idx, url)
-    if res:
-        insert_to_supabase(res)
+    result = search_url(idx, url)
+    if result:
+        insert_to_supabase(result)
 
 def main(start_line=1, end_line=None):
     with open("list_url.csv", "r", encoding="utf-8") as f:
@@ -68,12 +81,10 @@ def main(start_line=1, end_line=None):
 
     urls = urls[start_line - 1 : end_line]
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [executor.submit(worker, idx + 1, url) for idx, url in enumerate(urls)]
-
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(worker, idx + start_line, url) for idx, url in enumerate(urls)]
         for f in futures:
-            f.result()  # tunggu semua selesai
+            f.result()
 
 if __name__ == "__main__":
-    # Contoh scrap dari baris 10 sampai 20
     main(start_line=mulai, end_line=endnya)
