@@ -2,7 +2,6 @@ import requests
 import time
 from concurrent.futures import ThreadPoolExecutor
 from supabase import create_client, Client
-from bs4 import BeautifulSoup
 
 # Konfigurasi Supabase
 SUPABASE_URL = "https://cqakrownxujefhtmsefa.supabase.co"
@@ -10,46 +9,51 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 SUPABASE_TABLE_NAME = "scpok"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Konfigurasi ScraperAPI
-SCRAPER_API_KEY = "d6dc15f2ac972c5af6f6ff499594fa7e"
-SCRAPER_URL = "http://api.scraperapi.com"
+# Konfigurasi Apify
+APIFY_API_TOKEN = "apify_api_KYYLgCawu5TDZgBEf9vRt82OvLZWnH4CL93x"  # Ganti dengan token Apify kamu
+APIFY_API_URL = f"https://api.apify.com/v2/actor-tasks/apify/google-search-scraper/run-sync-get-dataset-items?token={APIFY_API_TOKEN}"
 
 # Rentang baris yang ingin diproses
-mulai = 1
+mulai = 0
 endnya = 2500
 
 def search_url(idx, target_url):
-    params = {
-        "api_key": SCRAPER_API_KEY,
-        "url": f"https://www.google.com/search?q=site:{target_url}"
+    query = f"site:{target_url}"
+    payload = {
+        "searchTerms": [query],
+        "resultsPerPage": 1,
+        "pageNumber": 1,
+        "language": "en",
+        "countryCode": "us"
+    }
+
+    headers = {
+        "Content-Type": "application/json"
     }
 
     try:
-        response = requests.get(SCRAPER_URL, params=params)
-        soup = BeautifulSoup(response.text, "html.parser")
+        response = requests.post(APIFY_API_URL, json=payload, headers=headers)
+        if response.status_code != 200:
+            print(f"[{idx}] ⚠ HTTP error {response.status_code}: {response.text}")
+            return None
 
-        # Ambil hasil pencarian pertama
-        result = soup.find("div", class_="tF2Cxc") or soup.find("div", class_="g")
+        results = response.json()
 
-        if result:
-            title_tag = result.find("h3")
-            link_tag = result.find("a", href=True)
+        if results and len(results) > 0:
+            top_result = results[0]
+            title = top_result.get("title", "")
+            link = top_result.get("url", "")
+            snippet = top_result.get("description", "tidak ada snippet")
 
-            if title_tag and link_tag:
-                title = title_tag.text.strip()
-                link = link_tag["href"].strip()
-                snippet = result.find("span", class_="aCOpRe")
-                snippet_text = snippet.text.strip() if snippet else "tidak ada snippet"
-
-                print(f"[{idx}] ✔ {title} -> {link}")
-                return {
-                    "title": title,
-                    "url": link,
-                    "snippet": snippet_text
-                }
-
-        print(f"[{idx}] ❌ Tidak ditemukan: {target_url}")
-        return None
+            print(f"[{idx}] ✔ {title} -> {link}")
+            return {
+                "title": title,
+                "url": link,
+                "snippet": snippet
+            }
+        else:
+            print(f"[{idx}] ❌ Tidak ditemukan: {target_url}")
+            return None
 
     except Exception as e:
         print(f"[{idx}] ⚠ Error: {e}")
@@ -81,7 +85,7 @@ def main(start_line=1, end_line=None):
 
     urls = urls[start_line - 1 : end_line]
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [executor.submit(worker, idx + start_line, url) for idx, url in enumerate(urls)]
         for f in futures:
             f.result()
