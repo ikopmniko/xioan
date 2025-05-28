@@ -14,7 +14,7 @@ APIFY_API_TOKEN = "apify_api_KYYLgCawu5TDZgBEf9vRt82OvLZWnH4CL93x"  # Ganti deng
 APIFY_API_URL = f"https://api.apify.com/v2/actor-tasks/apify/google-search-scraper/run-sync-get-dataset-items?token={APIFY_API_TOKEN}"
 
 # Rentang baris yang ingin diproses
-mulai = 0
+mulai = 1
 endnya = 2500
 
 def search_url(idx, target_url):
